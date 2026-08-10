@@ -19,6 +19,29 @@ const here = fileURLToPath(new URL('.', import.meta.url))
 const WEB_DIR = resolve(here, '..', 'dist-web')
 const FALLBACK_PRICING_PATH = resolve(here, 'pricing', 'fallback.json')
 
+const MAX_PORT_ATTEMPTS = 20
+
+/** Binds to `startPort`, retrying on the next port up if it's already taken
+ * (a previous claude-dash instance, or anything else). Any other listen
+ * error (e.g. EACCES) is thrown immediately rather than retried. */
+async function listenWithPortFallback(fetch: Parameters<typeof serve>[0]['fetch'], hostname: string, startPort: number): Promise<{ server: ReturnType<typeof serve>; port: number }> {
+  for (let attempt = 0; attempt < MAX_PORT_ATTEMPTS; attempt++) {
+    const port = startPort + attempt
+    try {
+      const server = await new Promise<ReturnType<typeof serve>>((resolvePromise, reject) => {
+        const s = serve({ fetch, port, hostname }, (info) => resolvePromise(Object.assign(s, { info })))
+        s.on('error', reject)
+      })
+      if (attempt > 0) log.warn(`port ${startPort} was already in use — listening on ${port} instead`)
+      return { server, port }
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException)?.code
+      if (code !== 'EADDRINUSE' || attempt === MAX_PORT_ATTEMPTS - 1) throw err
+    }
+  }
+  throw new Error('unreachable')
+}
+
 export interface BootResult {
   close: () => Promise<void>
   url: string
@@ -96,12 +119,9 @@ export async function boot(cli: CliOptions): Promise<BootResult> {
     }),
   })
 
-  const server = await new Promise<ReturnType<typeof serve>>((resolvePromise, reject) => {
-    const s = serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => resolvePromise(Object.assign(s, { info })))
-    s.on('error', reject)
-  })
+  const { server, port } = await listenWithPortFallback(app.fetch, config.host, config.port)
 
-  const url = `http://${config.host}:${config.port}`
+  const url = `http://${config.host}:${port}`
 
   return {
     url,

@@ -2,7 +2,7 @@
 
 A local dashboard for [Claude Code](https://claude.com/product/claude-code) usage — sessions, tokens, cost, and full chat transcripts, live-updating as you work.
 
-![Claude Dash dashboard](docs/dashboard.png)
+![Claude Dash dashboard](https://raw.githubusercontent.com/darshan260802/claude-dash/development/docs/dashboard.png)
 
 ## Installation
 
