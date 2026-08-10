@@ -28,10 +28,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="px-3 py-3">
         <div className="flex items-center gap-2 px-1">
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground font-heading text-sm font-bold">C</div>
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground font-heading text-sm font-bold">CD</div>
           <div className="flex flex-col leading-none group-data-[collapsible=icon]:hidden">
-            <span className="font-heading text-sm font-semibold">claude-dash</span>
-            <span className="text-[11px] text-muted-foreground">usage monitor</span>
+            <span className="font-heading text-sm font-semibold">Claude Dash</span>
+            <span className="text-[11px] text-muted-foreground">Usage Monitor</span>
           </div>
         </div>
       </SidebarHeader>
