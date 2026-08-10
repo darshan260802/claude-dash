@@ -9,8 +9,12 @@ lerna-debug.log*
 
 node_modules
 dist
+dist-web
+dist-server
 dist-ssr
 *.local
+*.tsbuildinfo
+.cache/
 
 # Editor directories and files
 .vscode/*
