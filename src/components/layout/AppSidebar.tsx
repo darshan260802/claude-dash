@@ -1,8 +1,9 @@
 import { Link, useLocation } from 'react-router'
-import { SquaresFour, FolderOpen, ChatsCircle, Broadcast, MagnifyingGlass, Gear } from '@phosphor-icons/react'
+import { SquaresFour, FolderOpen, ChatsCircle, Broadcast, MagnifyingGlass, Gear, Info } from '@phosphor-icons/react'
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -55,6 +56,16 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton isActive={location.pathname === '/about'} tooltip="About" render={<Link to="/about" />}>
+              <Info weight={location.pathname === '/about' ? 'fill' : 'regular'} />
+              <span>About</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   )
 }

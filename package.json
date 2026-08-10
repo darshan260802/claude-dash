@@ -42,7 +42,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "dev": "concurrently -n web,api -c cyan,magenta \"vite\" \"tsx watch server/main.ts --port 4317\"",
+    "dev": "concurrently -n web,api -c cyan,magenta \"vite\" \"tsx watch server/main.ts --port 4318\"",
     "build": "bun run typecheck && bun run build:web && bun run build:server",
     "build:web": "vite build",
     "build:server": "tsup",

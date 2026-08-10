@@ -1,12 +1,25 @@
-# claude-dash
+# Claude Dash
 
 A local dashboard for [Claude Code](https://claude.com/product/claude-code) usage — sessions, tokens, cost, and full chat transcripts, live-updating as you work.
 
+![Claude Dash dashboard](docs/dashboard.png)
+
+## Installation
+
+Run it directly, no install:
+
 ```sh
-npx claude-dash
+npx @darshanpatel2608/claude-dash
 ```
 
-That's it. It starts a local server, reads Claude Code's session logs from `~/.claude` (or `$CLAUDE_CONFIG_DIR`), and opens the dashboard in your browser.
+Or install it globally and run it as `claude-dash`:
+
+```sh
+npm i -g @darshanpatel2608/claude-dash
+claude-dash
+```
+
+Either way, it starts a local server, reads Claude Code's session logs from `~/.claude` (or `$CLAUDE_CONFIG_DIR`), and opens the dashboard in your browser.
 
 ## What it shows
 
@@ -22,7 +35,7 @@ Everything runs locally. No data leaves your machine.
 ## Options
 
 ```sh
-npx claude-dash [options]
+claude-dash [options]
 
   --port <n>            Port to listen on (default 4317)
   --host <s>            Host to bind (default 127.0.0.1)

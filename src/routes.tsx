@@ -8,6 +8,7 @@ import { SessionDetailPage } from '@/pages/SessionDetailPage'
 import { LivePage } from '@/pages/LivePage'
 import { SearchPage } from '@/pages/SearchPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { AboutPage } from '@/pages/AboutPage'
 
 export const router = createBrowserRouter([
   {
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
       { path: 'live', element: <LivePage /> },
       { path: 'search', element: <SearchPage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'about', element: <AboutPage /> },
     ],
   },
 ])
