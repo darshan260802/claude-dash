@@ -2,8 +2,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { useProjects } from '@/hooks/useSessions'
+import { DateRangeFilter, type DateRange } from './DateRangeFilter'
 
-export interface SessionFilterState {
+export interface SessionFilterState extends DateRange {
   project?: string
   model?: string
   liveOnly: boolean
@@ -18,7 +19,7 @@ export function SessionFilters({ value, onChange }: { value: SessionFilterState;
     <div className="flex flex-wrap items-center gap-3">
       <Select value={value.project ?? 'all'} onValueChange={(v) => onChange({ ...value, project: !v || v === 'all' ? undefined : v })}>
         <SelectTrigger className="h-8 w-44 text-xs">
-          <SelectValue placeholder="All projects" />
+          <SelectValue placeholder="All projects">{(v: string) => (!v || v === 'all' ? 'All projects' : (projects?.find((p) => p.key === v)?.name ?? v))}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All projects</SelectItem>
@@ -32,7 +33,7 @@ export function SessionFilters({ value, onChange }: { value: SessionFilterState;
 
       <Select value={value.model ?? 'all'} onValueChange={(v) => onChange({ ...value, model: !v || v === 'all' ? undefined : v })}>
         <SelectTrigger className="h-8 w-44 text-xs">
-          <SelectValue placeholder="All models" />
+          <SelectValue placeholder="All models">{(v: string) => (!v || v === 'all' ? 'All models' : v)}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All models</SelectItem>
@@ -43,6 +44,8 @@ export function SessionFilters({ value, onChange }: { value: SessionFilterState;
           ))}
         </SelectContent>
       </Select>
+
+      <DateRangeFilter value={{ from: value.from, to: value.to }} onChange={(range) => onChange({ ...value, ...range })} />
 
       <div className="flex items-center gap-2">
         <Switch id="live-only" checked={value.liveOnly} onCheckedChange={(checked) => onChange({ ...value, liveOnly: checked })} />

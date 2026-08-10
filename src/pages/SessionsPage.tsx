@@ -6,7 +6,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export function SessionsPage() {
   const [filters, setFilters] = useState<SessionFilterState>({ liveOnly: false })
-  const { data, isLoading } = useSessions({ project: filters.project, model: filters.model, live: filters.liveOnly || undefined, limit: 200 })
+  const { data, isLoading } = useSessions({
+    project: filters.project,
+    model: filters.model,
+    live: filters.liveOnly || undefined,
+    from: filters.from,
+    to: filters.to,
+    limit: 200,
+  })
 
   return (
     <div className="flex flex-col gap-6">

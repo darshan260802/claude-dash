@@ -1,10 +1,13 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import type { TurnDTO } from '@shared/types.ts'
 import { TurnRow } from './TurnRow'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/common/EmptyState'
-import { ChatsCircle } from '@phosphor-icons/react'
+import { ChatsCircle, ArrowDown } from '@phosphor-icons/react'
+import { cn } from '@/lib/utils'
+
+const BOTTOM_THRESHOLD_PX = 80
 
 export function TranscriptVirtualList({
   turns,
@@ -25,6 +28,7 @@ export function TranscriptVirtualList({
 }) {
   const parentRef = useRef<HTMLDivElement>(null)
   const wasAtBottomRef = useRef(true)
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false)
 
   const virtualizer = useVirtualizer({
     count: turns.length,
@@ -65,11 +69,27 @@ export function TranscriptVirtualList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turns.length, autoScroll])
 
-  function handleScroll() {
+  const handleScroll = useCallback(() => {
     const el = parentRef.current
     if (!el) return
-    wasAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-  }
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD_PX
+    wasAtBottomRef.current = atBottom
+    setShowJumpToBottom((prev) => (prev === !atBottom ? prev : !atBottom))
+  }, [])
+
+  const jumpToBottom = useCallback(() => {
+    wasAtBottomRef.current = true
+    setShowJumpToBottom(false)
+    const target = turns.length - 1
+    virtualizer.scrollToIndex(target, { align: 'end' })
+    // The target row's real height isn't known until it mounts and
+    // measures itself, so the first scroll (using the 120px estimate) can
+    // undershoot for a tall last message — correct once it's settled.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => virtualizer.scrollToIndex(target, { align: 'end' }))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turns.length])
 
   if (isLoading) {
     return (
@@ -86,20 +106,33 @@ export function TranscriptVirtualList({
   }
 
   return (
-    <div ref={parentRef} onScroll={handleScroll} className="h-[calc(100vh-14rem)] overflow-y-auto">
-      <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
-        {virtualItems.map((vItem) => (
-          <div
-            key={vItem.key}
-            data-index={vItem.index}
-            ref={virtualizer.measureElement}
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vItem.start}px)` }}
-            className="pb-3"
-          >
-            <TurnRow turn={turns[vItem.index]} session={session} />
-          </div>
-        ))}
+    <div className="relative">
+      <div ref={parentRef} onScroll={handleScroll} className="h-[calc(100vh-14rem)] overflow-y-auto">
+        <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+          {virtualItems.map((vItem) => (
+            <div
+              key={vItem.key}
+              data-index={vItem.index}
+              ref={virtualizer.measureElement}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vItem.start}px)` }}
+              className="pb-3"
+            >
+              <TurnRow turn={turns[vItem.index]} session={session} />
+            </div>
+          ))}
+        </div>
       </div>
+      <button
+        type="button"
+        onClick={jumpToBottom}
+        className={cn(
+          'absolute right-4 bottom-4 z-10 flex items-center gap-1.5 rounded-full border border-border bg-card/95 px-3 py-1.5 text-xs font-medium shadow-lg backdrop-blur transition-all hover:bg-accent',
+          showJumpToBottom ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-2 opacity-0',
+        )}
+      >
+        <ArrowDown className="size-3.5" />
+        Jump to latest
+      </button>
     </div>
   )
 }

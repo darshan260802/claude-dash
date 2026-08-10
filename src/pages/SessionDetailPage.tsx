@@ -54,7 +54,7 @@ export function SessionDetailPage() {
             autoScroll={session.liveness !== 'ended'}
           />
         </div>
-        <div className="hidden lg:block">
+        <div className="hidden self-start lg:sticky lg:top-4 lg:block">
           <SessionStatsRail session={session} />
         </div>
       </div>
