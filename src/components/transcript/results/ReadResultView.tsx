@@ -17,7 +17,7 @@ export function ReadResultView({ result, session }: { result: ToolResultDTO; ses
       </pre>
       {result.truncated && result.ref && (
         <a
-          href={api.rawBlockUrl(session, result.ref.byteOffset, result.ref.byteLength)}
+          href={api.rawBlockUrl(session, result.ref.byteOffset, result.ref.byteLength, result.ref.agentId)}
           target="_blank"
           rel="noreferrer"
           className="block border-t border-border px-2 py-1 text-[11px] text-primary hover:underline"

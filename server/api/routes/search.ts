@@ -1,8 +1,9 @@
 import type { Hono } from 'hono'
 import type { RouteContext } from '../context.ts'
 import type { TurnKind } from '@shared/types.ts'
+import type { ShareEnv } from '../../share/middleware.ts'
 
-export function registerSearchRoutes(app: Hono, ctx: RouteContext): void {
+export function registerSearchRoutes(app: Hono<ShareEnv>, ctx: RouteContext): void {
   app.get('/api/search', (c) => {
     const q = c.req.query()
     const query = q.q ?? ''

@@ -91,3 +91,65 @@ test('an unknown record type is tracked, not silently ignored or crashed on', ()
   assert.equal(turns.length, 0)
   assert.deepEqual(unknownRecordTypes, ['some-future-record-type'])
 })
+
+// ---------------------------------------------------------------------
+// agentId stamping on BlockRef — groupIntoTurns' optional third argument.
+// Every ref-carrying block type must pick it up, since /api/raw/* uses
+// ref.agentId (not ref.session, which stays the PARENT id either way) to
+// decide whether to read the agent's own file or the parent's.
+// ---------------------------------------------------------------------
+
+const AGENT_ID = 'agent-xyz'
+
+test('an image block ref carries agentId when groupIntoTurns is called for a sub-agent file', () => {
+  const lines = fakeLines([assistantLine({ messageId: 'msg_1', requestId: 'req_1', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'Zg==' } }] })])
+  const { turns } = groupIntoTurns(lines, 'parent-session', AGENT_ID)
+  const block = turns.find((t) => t.kind === 'assistant')!.blocks[0]!
+  assert.equal(block.type, 'image')
+  if (block.type !== 'image') throw new Error('unreachable')
+  assert.equal(block.ref.agentId, AGENT_ID)
+  assert.equal(block.ref.session, 'parent-session', 'ref.session stays the PARENT id — agentId is what disambiguates the file')
+})
+
+test('a truncated text block ref carries agentId', () => {
+  const longText = 'x'.repeat(30_000) // over INLINE_BLOCK_LIMIT (24KB), so it truncates and gets a ref
+  const lines = fakeLines([assistantLine({ messageId: 'msg_1', requestId: 'req_1', content: [{ type: 'text', text: longText }] })])
+  const { turns } = groupIntoTurns(lines, 'parent-session', AGENT_ID)
+  const block = turns.find((t) => t.kind === 'assistant')!.blocks[0]!
+  assert.equal(block.type, 'text')
+  if (block.type !== 'text') throw new Error('unreachable')
+  assert.equal(block.truncated, true)
+  assert.equal(block.ref?.agentId, AGENT_ID)
+})
+
+test('a truncated thinking block ref carries agentId', () => {
+  const longThinking = 'y'.repeat(30_000)
+  const lines = fakeLines([assistantLine({ messageId: 'msg_1', requestId: 'req_1', content: [{ type: 'thinking', thinking: longThinking }] })])
+  const { turns } = groupIntoTurns(lines, 'parent-session', AGENT_ID)
+  const block = turns.find((t) => t.kind === 'assistant')!.blocks[0]!
+  assert.equal(block.type, 'thinking')
+  if (block.type !== 'thinking') throw new Error('unreachable')
+  assert.equal(block.truncated, true)
+  assert.equal(block.ref?.agentId, AGENT_ID)
+})
+
+test('a tool_use result ref carries agentId', () => {
+  const lines = fakeLines([
+    assistantLine({ messageId: 'msg_1', requestId: 'req_1', content: [{ type: 'tool_use', id: 'toolu_1', name: 'Bash', input: { command: 'echo hi' } }] }),
+    toolResultLine('toolu_1', 'hi', { toolUseResult: { stdout: 'hi', stderr: '', interrupted: false } }),
+  ])
+  const { turns } = groupIntoTurns(lines, 'parent-session', AGENT_ID)
+  const toolBlock = turns.find((t) => t.kind === 'assistant')!.blocks[0]!
+  assert.equal(toolBlock.type, 'tool_use')
+  if (toolBlock.type !== 'tool_use') throw new Error('unreachable')
+  assert.equal(toolBlock.result?.ref?.agentId, AGENT_ID)
+})
+
+test('omitting agentId (the main-session call site) leaves refs without one', () => {
+  const lines = fakeLines([assistantLine({ messageId: 'msg_1', requestId: 'req_1', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'Zg==' } }] })])
+  const { turns } = groupIntoTurns(lines, 'session-1')
+  const block = turns.find((t) => t.kind === 'assistant')!.blocks[0]!
+  assert.equal(block.type, 'image')
+  if (block.type !== 'image') throw new Error('unreachable')
+  assert.equal(block.ref.agentId, undefined)
+})

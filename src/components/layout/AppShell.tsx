@@ -5,9 +5,16 @@ import { AppSidebar } from './AppSidebar'
 import { TopBar } from './TopBar'
 import { CommandPalette } from './CommandPalette'
 import { useLiveEvents } from '@/hooks/useLiveEvents'
+import { useShareContext } from '@/hooks/useShare'
 
 export function AppShell() {
-  useLiveEvents()
+  const { data: shareCtx } = useShareContext()
+  // Reached both by the owner and by a global-mode share visitor (see
+  // src/App.tsx's router selection) — undefined while shareCtx is still
+  // loading defaults to "owner", matching AppSidebar's own nav-filter logic,
+  // so the common local-use case never flashes anything and then hides it.
+  const isOwner = shareCtx?.isOwner !== false
+  useLiveEvents(isOwner)
   const [paletteOpen, setPaletteOpen] = useState(false)
 
   useEffect(() => {

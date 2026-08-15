@@ -5,7 +5,9 @@ import { GitBranch, FolderOpen } from '@phosphor-icons/react'
 import { LivenessPill } from '@/components/common/LivenessPill'
 import { ModelChip } from '@/components/common/ModelChip'
 import { RelativeTime } from '@/components/common/RelativeTime'
+import { SessionIdBadge } from '@/components/common/SessionIdBadge'
 import { Badge } from '@/components/ui/badge'
+import { ShareButton } from '@/components/share/ShareButton'
 
 export function SessionHeader({ session }: { session: SessionDetailDTO }) {
   return (
@@ -17,8 +19,12 @@ export function SessionHeader({ session }: { session: SessionDetailDTO }) {
             forked · usage attributed to parent session
           </Badge>
         )}
+        <div className="ml-auto">
+          <ShareButton sessionId={session.id} />
+        </div>
       </div>
       <h1 className="font-heading text-xl font-semibold">{session.title}</h1>
+      <SessionIdBadge id={session.id} />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
         <Link to={`/projects/${encodeURIComponent(session.projectKey)}`} className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
           <FolderOpen className="size-3.5" />

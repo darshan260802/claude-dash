@@ -4,6 +4,7 @@ import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { LiveIndicator } from './LiveIndicator'
 import { ThemeToggle } from './ThemeToggle'
+import { ShareStatusBanner } from '@/components/share/ShareStatusBanner'
 
 export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
   return (
@@ -20,6 +21,7 @@ export function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
         <kbd className="ml-auto rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">⌘K</kbd>
       </Button>
       <div className="ml-auto flex items-center gap-3">
+        <ShareStatusBanner />
         <LiveIndicator />
         <ThemeToggle />
       </div>

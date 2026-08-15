@@ -6,6 +6,7 @@ import { LivenessPill } from '@/components/common/LivenessPill'
 import { ModelChip } from '@/components/common/ModelChip'
 import { TokenBar } from '@/components/common/TokenBar'
 import { RelativeTime } from '@/components/common/RelativeTime'
+import { SessionIdBadge } from '@/components/common/SessionIdBadge'
 import { EmptyState } from '@/components/common/EmptyState'
 import { ChatsCircle, Robot, Wrench } from '@phosphor-icons/react'
 
@@ -38,7 +39,8 @@ export function SessionTable({ sessions, showProject = true }: { sessions: Sessi
                 <Link to={`/sessions/${s.id}`} className="block truncate font-medium text-foreground hover:underline">
                   {s.title}
                 </Link>
-                <div className="mt-0.5 flex items-center gap-2.5 text-[11px] text-muted-foreground">
+                <div className="mt-0.5 flex flex-wrap items-center gap-2.5 text-[11px] text-muted-foreground">
+                  <SessionIdBadge id={s.id} />
                   <span className="inline-flex items-center gap-1">
                     <ChatsCircle className="size-3" />
                     {s.turnCount}

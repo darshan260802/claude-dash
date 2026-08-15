@@ -1,13 +1,14 @@
 import type { Hono } from 'hono'
 import type { RouteContext } from '../context.ts'
 import type { TurnKind } from '@shared/types.ts'
+import type { ShareEnv } from '../../share/middleware.ts'
 
 function splitParam(v: string | undefined): string[] | undefined {
   if (!v) return undefined
   return v.split(',').filter(Boolean)
 }
 
-export function registerSessionRoutes(app: Hono, ctx: RouteContext): void {
+export function registerSessionRoutes(app: Hono<ShareEnv>, ctx: RouteContext): void {
   app.get('/api/sessions', (c) => {
     const q = c.req.query()
     const sessions = ctx.index.listSessions({
@@ -40,6 +41,12 @@ export function registerSessionRoutes(app: Hono, ctx: RouteContext): void {
     })
     if (!page) return c.json({ error: 'not_found' }, 404)
     return c.json(page)
+  })
+
+  app.get('/api/sessions/:id/subagents/:agentId', (c) => {
+    const detail = ctx.index.getSubagent(c.req.param('id'), c.req.param('agentId'))
+    if (!detail) return c.json({ error: 'not_found' }, 404)
+    return c.json(detail)
   })
 
   app.get('/api/sessions/:id/subagents/:agentId/turns', (c) => {

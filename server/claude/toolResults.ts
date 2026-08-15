@@ -45,6 +45,7 @@ export interface NormalizeContext {
   session: string
   byteOffset: number
   byteLength: number
+  agentId?: string
 }
 
 /** Classify a tool by name into a display "kind" — drives which ToolResultView
@@ -103,7 +104,7 @@ export function normalizeToolResult(
     status: resultBlock == null ? 'pending' : isError ? 'error' : 'ok',
     kind,
     isError,
-    ref: { session: ctx.session, byteOffset: ctx.byteOffset, byteLength: ctx.byteLength },
+    ref: { session: ctx.session, byteOffset: ctx.byteOffset, byteLength: ctx.byteLength, agentId: ctx.agentId },
   }
 
   if (kind === 'bash') {

@@ -1,4 +1,6 @@
+import { Navigate } from 'react-router'
 import { useSettings, usePatchSettings } from '@/hooks/useSettings'
+import { useShareContext } from '@/hooks/useShare'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,6 +13,13 @@ import { toast } from 'sonner'
 export function SettingsPage() {
   const { data: settings, isLoading } = useSettings()
   const patch = usePatchSettings()
+  const { data: shareCtx } = useShareContext()
+
+  // Cosmetic only — a global-mode visitor reaches this route in the same
+  // tree as the owner (AppSidebar hides the nav entry, but a direct URL
+  // still resolves). The real boundary is server-side: PATCH /api/settings
+  // is 403 for any non-owner regardless of mode.
+  if (shareCtx?.isOwner === false) return <Navigate to="/" replace />
 
   if (isLoading || !settings) {
     return (

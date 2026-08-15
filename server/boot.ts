@@ -11,6 +11,7 @@ import { PricingService } from './pricing/PricingService.ts'
 import type { Config, CliOptions } from './config.ts'
 import { LIVE_WINDOW_MS, RECENT_WINDOW_MS } from './config.ts'
 import { log } from './util/log.ts'
+import { createShareController } from './share/controller.ts'
 
 const PKG_VERSION = '0.1.0'
 
@@ -82,6 +83,11 @@ export async function boot(cli: CliOptions): Promise<BootResult> {
     return { url: '', config, index, close: async () => {} }
   }
 
+  // Created after the --json early-return above: a headless one-shot run
+  // has no reason to install the tunnel controller's process-level
+  // unhandledRejection handler or bump process.setMaxListeners.
+  const share = createShareController()
+
   let watcher: WatcherHandle | null = null
   try {
     watcher = startWatcher(index, config.resolvedClaudeDirs, {
@@ -117,9 +123,15 @@ export async function boot(cli: CliOptions): Promise<BootResult> {
       indexed: index.counts,
       indexing: false,
     }),
+    share,
   })
 
   const { server, port } = await listenWithPortFallback(app.fetch, config.host, config.port)
+
+  // listenWithPortFallback can land up to MAX_PORT_ATTEMPTS ports away from
+  // config.port when the requested one was taken — the tunnel must target
+  // whichever port actually got bound, not the one that was merely asked for.
+  share.setPort(port)
 
   const url = `http://${config.host}:${port}`
 
@@ -128,6 +140,7 @@ export async function boot(cli: CliOptions): Promise<BootResult> {
     config,
     index,
     close: async () => {
+      await share.stop()
       await watcher?.close()
       await new Promise<void>((res) => server.close(() => res()))
     },

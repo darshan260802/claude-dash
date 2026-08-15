@@ -40,6 +40,33 @@ export async function discoverSubagentFiles(projectDir: string, sessionId: strin
   return results
 }
 
+type SubagentSummary = { turnCount: number; usage: SubagentRefDTO['usage']; cost: number | null; startedAt?: string; endedAt?: string }
+
+/** Build the full list of a session's sub-agents for `SessionDetailDTO.subagents`
+ * — every discovered agent file, regardless of whether its meta carries a
+ * `toolUseId`. Deliberately distinct from buildSubagentRefMap below: that one
+ * is keyed by toolUseId and drops any file missing one, which is correct for
+ * attaching a ref onto a specific tool_use block but wrong for "does this
+ * agent show up anywhere at all" — an agent whose meta write raced the parent
+ * turn's flush (or just predates toolUseId being recorded) would otherwise
+ * silently vanish from the UI. */
+export function buildSubagentList(files: SubagentFile[], summaries: Map<string, SubagentSummary>): SubagentRefDTO[] {
+  return files.map((f) => {
+    const summary = summaries.get(f.agentId)
+    return {
+      agentId: f.agentId,
+      agentType: f.meta.agentType,
+      description: f.meta.description,
+      turnCount: summary?.turnCount ?? 0,
+      usage: summary?.usage ?? { input: 0, output: 0, cacheRead: 0, cacheWrite5m: 0, cacheWrite1h: 0 },
+      cost: summary?.cost ?? null,
+      startedAt: summary?.startedAt,
+      endedAt: summary?.endedAt,
+      toolUseId: f.meta.toolUseId,
+    }
+  })
+}
+
 /** Build a lookup from the parent session's `Agent`/`Task` tool_use.id to the
  * sub-agent's summary — used both to attach `subagentRef` on the tool_use
  * block and to serve `GET /sessions/:id/subagents/:agentId/turns`. */

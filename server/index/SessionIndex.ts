@@ -5,7 +5,7 @@ import { readLinesFrom } from '../claude/lineReader.ts'
 import { groupIntoTurns } from '../claude/turns.ts'
 import { extractSessionMeta, sessionLiveness, firstTimestamp, lastTimestamp } from '../claude/heuristics.ts'
 import { UsageAccumulator, emptyTotals, addUsageToTotals } from '../claude/usage.ts'
-import { discoverSubagentFiles, buildSubagentRefMap, type SubagentFile } from '../claude/subagents.ts'
+import { discoverSubagentFiles, buildSubagentRefMap, buildSubagentList, type SubagentFile } from '../claude/subagents.ts'
 import type { PricingService } from '../pricing/PricingService.ts'
 import { buildSearchDocs, searchDocs, type SearchDoc, type SearchOptions } from './search.ts'
 import { computeStats, type StatsOptions } from './aggregate.ts'
@@ -19,6 +19,7 @@ import type {
   SearchResultDTO,
   UsageTotals,
   SubagentRefDTO,
+  SubagentDetailDTO,
 } from '@shared/types.ts'
 
 interface FileState {
@@ -79,6 +80,10 @@ interface SubagentNode {
   countedApiCalls: number
   startedAt?: string
   endedAt?: string
+  /** File mtime, same "is this live" signal rebuildSession uses for the
+   * parent — lets an agent's own transcript be polled independently of
+   * whether the parent session is still writing. */
+  lastAppendAt: number
 }
 
 interface ProjectNode {
@@ -164,6 +169,26 @@ export class SessionIndex {
     }
     this.files.set(filePath, state)
     this.rebuildSubagent(state)
+
+    // ingestSessionFile's own discoverSubagentFiles pass only runs once, at
+    // initial session ingest — so a sub-agent spawned later (the live case)
+    // needs its own discovery pass here, or it stays invisible in the
+    // parent's `subagents` list until a full re-index. filePath here is
+    // <projectDir>/<sessionId>/subagents/agent-<id>.jsonl, so three dirnames
+    // up is <projectDir>.
+    const projectDir = dirname(dirname(dirname(filePath)))
+    const subagentFiles = await discoverSubagentFiles(projectDir, sessionId)
+    this.subagentFilesBySession.set(sessionId, subagentFiles)
+
+    const parentPath = this.sessionFilePathOf(sessionId)
+    const parentState = parentPath ? this.files.get(parentPath) : undefined
+    if (parentState) {
+      this.rebuildSession(parentState)
+      this.touchRevision()
+    }
+    // If the parent session file hasn't been ingested yet at all, its own
+    // ingestSessionFile call will run discoverSubagentFiles itself and pick
+    // up this agent then — no gap either way.
   }
 
   /** Called by the file watcher on `add`/`change`. Returns null if the file
@@ -233,7 +258,7 @@ export class SessionIndex {
   // ---------------------------------------------------------------------
 
   private rebuildSubagent(state: FileState): void {
-    const { turns, unknownRecordTypes } = groupIntoTurns(state.rawLines, state.sessionId)
+    const { turns, unknownRecordTypes } = groupIntoTurns(state.rawLines, state.sessionId, state.agentId)
     for (const t of unknownRecordTypes) this.unknownRecordTypes.add(t)
 
     const totals = emptyTotals()
@@ -283,6 +308,7 @@ export class SessionIndex {
       countedApiCalls,
       startedAt: first,
       endedAt: last,
+      lastAppendAt: state.mtimeMs,
     })
   }
 
@@ -428,7 +454,10 @@ export class SessionIndex {
       errorCount,
       models,
       attributions,
-      subagents: [...subagentRefMap.values()],
+      // Not [...subagentRefMap.values()] — that map is keyed by toolUseId and
+      // silently drops any agent whose meta lacks one (see buildSubagentList's
+      // doc comment). This is the DTO's full "does this agent exist" list.
+      subagents: buildSubagentList(subagentFiles, summaries),
     }
     this.sessions.set(state.sessionId, node)
     this.searchDocsBySession.set(state.sessionId, buildSearchDocs(state.sessionId, projectKey, node.title, turns))
@@ -624,6 +653,49 @@ export class SessionIndex {
    * safe tool-results lookups (see api/routes/raw.ts). */
   getSessionFilePath(sessionId: string): string | undefined {
     return this.sessions.get(sessionId)?.filePath
+  }
+
+  /** Same as getSessionFilePath but for a sub-agent's own transcript file —
+   * needed because a BlockRef inside an agent turn carries the PARENT
+   * session id (groupIntoTurns is always called with the parent id) plus an
+   * agentId, and /api/raw/* must read the agent's file, not the parent's, at
+   * that byte offset. */
+  getSubagentFilePath(sessionId: string, agentId: string): string | undefined {
+    for (const [path, st] of this.files) {
+      if (st.isSubagent && st.sessionId === sessionId && st.agentId === agentId) return path
+    }
+    return undefined
+  }
+
+  /** Standalone sub-agent detail, independent of loading the parent session —
+   * backs GET /api/sessions/:id/subagents/:agentId. Reads agentType/description
+   * from subagentFilesBySession (not session.subagents) so it still resolves
+   * for an agent whose meta lacks a toolUseId. `parentAccessible` is always
+   * true here; a scoped share (agent shared without its parent) overrides it
+   * at the route layer, not here — this method has no notion of a viewer. */
+  getSubagent(sessionId: string, agentId: string): SubagentDetailDTO | null {
+    const node = this.subagentNodes.get(`${sessionId}:${agentId}`)
+    if (!node) return null
+    const file = (this.subagentFilesBySession.get(sessionId) ?? []).find((f) => f.agentId === agentId)
+    const parent = this.sessions.get(sessionId)
+    const project = parent ? this.projects.get(parent.projectKey) : undefined
+    return {
+      sessionId,
+      agentId,
+      agentType: file?.meta.agentType,
+      description: file?.meta.description,
+      turnCount: node.turnCount,
+      usage: node.totals,
+      cost: node.costUnknown ? null : node.cost,
+      startedAt: node.startedAt,
+      endedAt: node.endedAt,
+      lastAppendAt: node.lastAppendAt,
+      liveness: sessionLiveness(node.lastAppendAt),
+      parentTitle: parent?.title ?? sessionId,
+      projectName: project?.name ?? parent?.projectKey ?? '',
+      projectKey: parent?.projectKey ?? '',
+      parentAccessible: true,
+    }
   }
 }
 

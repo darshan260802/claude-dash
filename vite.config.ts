@@ -44,5 +44,11 @@ export default defineConfig({
             },
         },
     },
-    base: './',
+    // Absolute base: the app is always served from the server root (never
+    // from a subpath or file://), and a relative base breaks asset URLs on
+    // deep links like /sessions/<uuid> — the browser resolves "./assets/…"
+    // against the current path instead of the site root, which 404s (or, in
+    // this app's case, hits the SPA catch-all and serves index.html back as
+    // the "script").
+    base: '/',
 })

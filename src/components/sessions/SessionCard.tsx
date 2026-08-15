@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { LivenessPill } from '@/components/common/LivenessPill'
 import { ModelChip } from '@/components/common/ModelChip'
 import { RelativeTime } from '@/components/common/RelativeTime'
+import { SessionIdBadge } from '@/components/common/SessionIdBadge'
 
 export function SessionCard({ session }: { session: SessionSummaryDTO }) {
   return (
@@ -19,6 +20,12 @@ export function SessionCard({ session }: { session: SessionSummaryDTO }) {
           </div>
           <p className="line-clamp-2 text-sm font-medium">{session.title}</p>
           <p className="truncate text-xs text-muted-foreground">{session.projectName}</p>
+          {/* The whole card is a Link — stop the copy click from also
+           * triggering navigation (and from nesting an interactive button
+           * inside the anchor's click-bubble path). */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <SessionIdBadge id={session.id} />
+          </div>
           <div className="flex items-center justify-between gap-2 pt-1">
             <div className="flex flex-wrap gap-1">
               {session.models.slice(0, 2).map((m) => (

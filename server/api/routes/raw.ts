@@ -5,15 +5,17 @@ import { readLineAt } from '../../claude/lineReader.ts'
 import { toolResultsDir } from '../../claude/paths.ts'
 import { parseLine } from '../../claude/parse.ts'
 import { readFile } from 'node:fs/promises'
+import type { ShareEnv } from '../../share/middleware.ts'
 
 const MAX_RAW_READ_BYTES = 32 * 1024 * 1024 // guard against a malformed byteLength causing a huge read
 
-export function registerRawRoutes(app: Hono, ctx: RouteContext): void {
+export function registerRawRoutes(app: Hono<ShareEnv>, ctx: RouteContext): void {
   // Full untruncated content of one source line's block (thinking/text/
   // tool_result), addressed by the byte offset the index already recorded —
   // never by anything the client could use to point at an arbitrary file.
   app.get('/api/raw/block', async (c) => {
     const session = c.req.query('session')
+    const agent = c.req.query('agent')
     const byteOffset = Number(c.req.query('byteOffset'))
     const byteLength = Number(c.req.query('byteLength'))
     if (!session || !Number.isFinite(byteOffset) || !Number.isFinite(byteLength)) {
@@ -21,7 +23,10 @@ export function registerRawRoutes(app: Hono, ctx: RouteContext): void {
     }
     if (byteLength < 0 || byteLength > MAX_RAW_READ_BYTES) return c.json({ error: 'bad_request' }, 400)
 
-    const filePath = ctx.index.getSessionFilePath(session)
+    // A ref inside a sub-agent turn carries the PARENT session id plus its
+    // own agentId — the byte offset only makes sense against the agent's own
+    // file, not the parent's.
+    const filePath = agent ? ctx.index.getSubagentFilePath(session, agent) : ctx.index.getSessionFilePath(session)
     if (!filePath) return c.json({ error: 'not_found' }, 404)
 
     try {
@@ -66,6 +71,7 @@ export function registerRawRoutes(app: Hono, ctx: RouteContext): void {
   // line — same byte-offset addressing as /api/raw/block.
   app.get('/api/raw/attachment', async (c) => {
     const session = c.req.query('session')
+    const agent = c.req.query('agent')
     const byteOffset = Number(c.req.query('byteOffset'))
     const byteLength = Number(c.req.query('byteLength'))
     if (!session || !Number.isFinite(byteOffset) || !Number.isFinite(byteLength)) {
@@ -73,7 +79,7 @@ export function registerRawRoutes(app: Hono, ctx: RouteContext): void {
     }
     if (byteLength < 0 || byteLength > MAX_RAW_READ_BYTES) return c.json({ error: 'bad_request' }, 400)
 
-    const filePath = ctx.index.getSessionFilePath(session)
+    const filePath = agent ? ctx.index.getSubagentFilePath(session, agent) : ctx.index.getSessionFilePath(session)
     if (!filePath) return c.json({ error: 'not_found' }, 404)
 
     try {

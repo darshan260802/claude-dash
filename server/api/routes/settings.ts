@@ -1,8 +1,9 @@
 import type { Hono } from 'hono'
 import type { RouteContext } from '../context.ts'
 import type { SettingsDTO, SettingsPatchDTO } from '@shared/types.ts'
+import type { ShareEnv } from '../../share/middleware.ts'
 
-export function registerSettingsRoutes(app: Hono, ctx: RouteContext): void {
+export function registerSettingsRoutes(app: Hono<ShareEnv>, ctx: RouteContext): void {
   app.get('/api/settings', (c) => {
     const counts = ctx.index.counts
     const dto: SettingsDTO = {

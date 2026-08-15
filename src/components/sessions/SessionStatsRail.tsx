@@ -1,10 +1,11 @@
+import { Link } from 'react-router'
 import type { SessionDetailDTO } from '@shared/types.ts'
 import { formatCost, formatTokens } from '@shared/format.ts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { RelativeTime } from '@/components/common/RelativeTime'
-import { Robot, Wrench, WarningCircle } from '@phosphor-icons/react'
+import { Robot, Wrench, WarningCircle, CaretRight } from '@phosphor-icons/react'
 
 const USAGE_ROWS: { key: keyof SessionDetailDTO['totals']; label: string; colorClass: string }[] = [
   { key: 'input', label: 'Input', colorClass: 'bg-chart-1' },
@@ -77,14 +78,21 @@ export function SessionStatsRail({ session }: { session: SessionDetailDTO }) {
           </CardHeader>
           <CardContent className="flex flex-col gap-2.5 px-4">
             {session.subagents.map((a) => (
-              <div key={a.agentId} className="flex flex-col gap-0.5 rounded-md border border-border p-2 text-xs">
-                <div className="flex items-center justify-between">
+              <Link
+                key={a.agentId}
+                to={`/sessions/${session.id}/agents/${a.agentId}`}
+                className="flex flex-col gap-0.5 rounded-md border border-border p-2 text-xs transition-colors hover:border-primary/40"
+              >
+                <div className="flex items-center justify-between gap-1">
                   <span className="font-medium">{a.agentType ?? 'Agent'}</span>
-                  <span className="font-mono text-muted-foreground">{formatCost(a.cost)}</span>
+                  <span className="flex shrink-0 items-center gap-1 font-mono text-muted-foreground">
+                    {formatCost(a.cost)}
+                    <CaretRight className="size-3" />
+                  </span>
                 </div>
                 {a.description && <span className="truncate text-muted-foreground">{a.description}</span>}
                 <span className="text-[10px] text-muted-foreground">{a.turnCount} turns</span>
-              </div>
+              </Link>
             ))}
           </CardContent>
         </Card>

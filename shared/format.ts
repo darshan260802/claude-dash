@@ -32,6 +32,13 @@ export function formatBytes(n: number): string {
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`
 }
 
+/** "H6S8SGA7" -> "H6S8-SGA7" — display convenience mirroring the server's
+ * own formatCodeForDisplay (server/share/gate.ts). Purely cosmetic: the
+ * gate accepts a submitted code with or without the hyphen either way. */
+export function formatAccessCode(code: string): string {
+  return `${code.slice(0, 4)}-${code.slice(4)}`
+}
+
 export function relativeTime(iso: string | number, now = Date.now()): string {
   const t = typeof iso === 'number' ? iso : new Date(iso).getTime()
   const diffMs = now - t

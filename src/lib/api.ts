@@ -2,15 +2,19 @@ import type {
   ProjectSummaryDTO,
   SessionSummaryDTO,
   SessionDetailDTO,
+  SubagentDetailDTO,
   TurnsPageDTO,
   StatsDTO,
   SearchResultDTO,
   SettingsDTO,
   SettingsPatchDTO,
   TurnKind,
+  ShareContextDTO,
+  ShareStatusDTO,
+  ShareMode,
 } from '@shared/types.ts'
 
-async function get<T>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+async function get<T>(path: string, params?: Record<string, string | number | boolean | undefined>, init?: RequestInit): Promise<T> {
   const qs = new URLSearchParams()
   if (params) {
     for (const [k, v] of Object.entries(params)) {
@@ -18,8 +22,36 @@ async function get<T>(path: string, params?: Record<string, string | number | bo
     }
   }
   const query = qs.toString()
-  const res = await fetch(query ? `${path}?${query}` : path)
+  const res = await fetch(query ? `${path}?${query}` : path, init)
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} — ${path}`)
+  return res.json() as Promise<T>
+}
+
+/** The CSRF half of owner-only enforcement (see server/share/middleware.ts's
+ * isSameOriginRequest) — a custom header forces a CORS preflight this server
+ * never answers, so a page loaded from anywhere else can't attach it even
+ * via a same-site fetch to this loopback origin. Sent on every /api/share/*
+ * call, GET included, since that whole prefix requires it. */
+const OWNER_HEADERS = { 'X-Claude-Dash': '1' }
+
+interface ApiError extends Error {
+  status?: number
+  body?: unknown
+}
+
+async function postOwner<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...OWNER_HEADERS },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}))
+    const err: ApiError = new Error(`${res.status} ${res.statusText} — ${path}`)
+    err.status = res.status
+    err.body = errBody
+    throw err
+  }
   return res.json() as Promise<T>
 }
 
@@ -52,6 +84,8 @@ export const api = {
       q: opts.q,
     }),
 
+  subagent: (sessionId: string, agentId: string) =>
+    get<SubagentDetailDTO>(`/api/sessions/${encodeURIComponent(sessionId)}/subagents/${encodeURIComponent(agentId)}`),
   subagentTurns: (sessionId: string, agentId: string, opts: { cursor?: number; limit?: number } = {}) =>
     get<TurnsPageDTO>(`/api/sessions/${encodeURIComponent(sessionId)}/subagents/${encodeURIComponent(agentId)}/turns`, opts),
 
@@ -68,9 +102,20 @@ export const api = {
     return res.json() as Promise<{ ok: true }>
   },
 
-  rawBlockUrl: (session: string, byteOffset: number, byteLength: number) =>
-    `/api/raw/block?session=${encodeURIComponent(session)}&byteOffset=${byteOffset}&byteLength=${byteLength}`,
+  // Sharing. shareContext is the one endpoint every viewer (owner or
+  // visitor, any mode) can reach — it's what the app uses to decide which
+  // router/shell to render. Everything else here is owner-only.
+  shareContext: () => get<ShareContextDTO>('/api/shared'),
+  shareStatus: () => get<ShareStatusDTO>('/api/share', undefined, { headers: OWNER_HEADERS }),
+  startShare: (mode: ShareMode) => postOwner<ShareStatusDTO | { state: 'starting' }>('/api/share/start', { mode }),
+  stopShare: () => postOwner<ShareStatusDTO>('/api/share/stop'),
+  addToShare: (item: { sessionId: string; agentId?: string; replaceGlobal?: boolean }) =>
+    postOwner<ShareStatusDTO | { state: 'starting' }>('/api/share/scope/add', item),
+  removeFromShare: (item: { sessionId: string; agentId?: string }) => postOwner<ShareStatusDTO>('/api/share/scope/remove', item),
+
+  rawBlockUrl: (session: string, byteOffset: number, byteLength: number, agentId?: string) =>
+    `/api/raw/block?session=${encodeURIComponent(session)}&byteOffset=${byteOffset}&byteLength=${byteLength}${agentId ? `&agent=${encodeURIComponent(agentId)}` : ''}`,
   rawOverflowUrl: (session: string, name: string) => `/api/raw/overflow?session=${encodeURIComponent(session)}&name=${encodeURIComponent(name)}`,
-  rawAttachmentUrl: (session: string, byteOffset: number, byteLength: number) =>
-    `/api/raw/attachment?session=${encodeURIComponent(session)}&byteOffset=${byteOffset}&byteLength=${byteLength}`,
+  rawAttachmentUrl: (session: string, byteOffset: number, byteLength: number, agentId?: string) =>
+    `/api/raw/attachment?session=${encodeURIComponent(session)}&byteOffset=${byteOffset}&byteLength=${byteLength}${agentId ? `&agent=${encodeURIComponent(agentId)}` : ''}`,
 }

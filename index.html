@@ -2,12 +2,176 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Resolve the theme before first paint (mirrors next-themes' own
+      // resolution — same localStorage key, same system-preference fallback)
+      // so the splash below never flashes the wrong palette. The app's own
+      // ThemeProvider (src/App.tsx) reconciles this once React mounts; this
+      // just gets #splash and the very first frame right before that.
+      ;(function () {
+        try {
+          var stored = localStorage.getItem('theme')
+          var dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', dark)
+        } catch (e) {}
+      })()
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Claude Dash</title>
+    <style>
+      /* Plain CSS, independent of the React bundle and its stylesheet, so
+       * the splash paints on the very first frame instead of waiting on JS —
+       * same reasoning as cursor-dash's splash. Colors are the light/dark
+       * --background and --primary tokens from src/index.css, copied rather
+       * than referenced: this file can't depend on that stylesheet having
+       * loaded yet. */
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: oklch(0.9858 0.0045 78.2984);
+      }
+      html.dark #splash {
+        background: oklch(0 0 0);
+      }
+      #splash .splash-mark {
+        position: relative;
+        display: flex;
+        width: 88px;
+        height: 88px;
+        opacity: 0;
+        animation: splash-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      #splash .splash-ring {
+        position: absolute;
+        inset: -14px;
+        border-radius: 26px;
+        border: 1px solid oklch(0.4911 0.0904 37.5793 / 25%);
+        animation: splash-ring 2.4s ease-out infinite;
+      }
+      #splash svg {
+        width: 100%;
+        height: 100%;
+        border-radius: 20px;
+        box-shadow: 0 12px 32px -8px oklch(0.4911 0.0904 37.5793 / 35%);
+      }
+      #splash .splash-credit {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 8vh;
+        display: flex;
+        justify-content: center;
+        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+        font-size: 12px;
+        color: oklch(0.5118 0.0166 84.5921);
+        opacity: 0;
+        animation: splash-credit-in 0.6s ease-out 0.45s forwards;
+      }
+      html.dark #splash .splash-credit {
+        color: oklch(0.6248 0.0159 84.5928);
+      }
+      #splash .splash-heart {
+        color: #e5484d;
+        margin: 0 0.3em;
+      }
+      #splash.splash-out {
+        opacity: 0;
+        transition: opacity 0.3s ease-out;
+      }
+      @keyframes splash-in {
+        from {
+          opacity: 0;
+          transform: scale(0.92);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+      @keyframes splash-ring {
+        0% {
+          transform: scale(0.9);
+          opacity: 0.6;
+        }
+        100% {
+          transform: scale(1.15);
+          opacity: 0;
+        }
+      }
+      @keyframes splash-credit-in {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash .splash-mark,
+        #splash .splash-credit {
+          animation: none;
+          opacity: 1;
+        }
+        #splash .splash-ring {
+          animation: none;
+          opacity: 0;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="splash">
+      <div class="splash-mark">
+        <span class="splash-ring" aria-hidden="true"></span>
+        <svg viewBox="0 0 88 88" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Claude Dash">
+          <rect width="88" height="88" rx="20" fill="oklch(0.4911 0.0904 37.5793)" />
+          <text
+            x="44"
+            y="47"
+            text-anchor="middle"
+            dominant-baseline="central"
+            font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+            font-weight="700"
+            font-size="34"
+            letter-spacing="-1"
+            fill="oklch(1 0 0)"
+          >
+            CD
+          </text>
+        </svg>
+      </div>
+      <div class="splash-credit">Made with <span class="splash-heart">♥</span> by Darshan Patel</div>
+    </div>
     <div id="root"></div>
+    <script>
+      // Independent of the React bundle, same reasoning as the theme script
+      // above: the overlay times itself out and fades away without waiting
+      // on JS to hydrate, so it can't get stuck showing if the app is slow
+      // to boot. React mounts underneath it in the meantime.
+      ;(function () {
+        var SPLASH_MS = 2000
+        var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        setTimeout(
+          function () {
+            var el = document.getElementById('splash')
+            if (!el) return
+            el.classList.add('splash-out')
+            setTimeout(function () {
+              el.remove()
+            }, 300)
+          },
+          reduced ? 600 : SPLASH_MS,
+        )
+      })()
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

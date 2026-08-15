@@ -28,7 +28,7 @@ export interface ToolResultDTO {
   preview?: string
   truncated?: boolean
   fullBytes?: number
-  ref?: BlockRef & { agentId?: string }
+  ref?: BlockRef
   structuredPatch?: unknown
   stdout?: string
   stderr?: string
@@ -53,6 +53,12 @@ export interface BlockRef {
   session: string
   byteOffset: number
   byteLength: number
+  /** Present when this block belongs to a sub-agent transcript rather than
+   * the main session file — `session` stays the PARENT session id either way
+   * (that's what groupIntoTurns is called with for both file kinds), so this
+   * is what /api/raw/* needs to pick the agent-<id>.jsonl file instead of the
+   * parent's .jsonl at the same byte offset. */
+  agentId?: string
 }
 
 export type TurnBlockDTO =
@@ -111,6 +117,31 @@ export interface SubagentRefDTO {
   startedAt?: string
   endedAt?: string
   toolUseId?: string
+}
+
+/** Standalone view of one sub-agent, independent of loading its parent
+ * session — what GET /api/sessions/:id/subagents/:agentId returns. Carries
+ * just enough parent context (title, project) to orient the viewer without
+ * granting access to the parent transcript itself. */
+export interface SubagentDetailDTO {
+  sessionId: string
+  agentId: string
+  agentType?: string
+  description?: string
+  turnCount: number
+  usage: UsageTotals
+  cost: number | null
+  startedAt?: string
+  endedAt?: string
+  lastAppendAt: number
+  liveness: Liveness
+  parentTitle: string
+  projectName: string
+  projectKey: string
+  /** Whether the current viewer may navigate to the parent session. True for
+   * the owner and outside of scoped sharing; a scoped share of this agent
+   * alone sets it false so the UI doesn't render a link the server would 403. */
+  parentAccessible: boolean
 }
 
 export interface ProjectSummaryDTO {
@@ -266,6 +297,42 @@ export interface SettingsDTO {
 export interface SettingsPatchDTO {
   liveWindowMs?: number
   pricingRefresh?: boolean
+}
+
+export type ShareMode = 'global' | 'scoped'
+
+/** One shared-out item, enriched with just enough display context to render
+ * a card/breadcrumb without a second round trip — used both by the owner's
+ * Share page ("what am I currently sharing") and the visitor's own bootstrap
+ * (GET /api/shared) and switcher. */
+export interface ShareItemDTO {
+  kind: 'session' | 'agent'
+  sessionId: string
+  agentId?: string
+  title: string
+  subtitle?: string
+  projectName: string
+  liveness: Liveness
+}
+
+export interface ShareStatusDTO {
+  state: 'idle' | 'starting' | 'active' | 'error'
+  url: string | null
+  code: string | null
+  startedAt: number | null
+  error: string | null
+  mode: ShareMode
+  items: ShareItemDTO[]
+}
+
+/** What GET /api/shared returns — the one thing every viewer (owner or
+ * visitor) can always reach, regardless of scope, since it's what the
+ * frontend uses to decide which router/shell to render in the first place. */
+export interface ShareContextDTO {
+  isOwner: boolean
+  active: boolean
+  mode: ShareMode
+  items: ShareItemDTO[]
 }
 
 export interface HealthDTO {

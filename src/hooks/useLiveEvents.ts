@@ -7,11 +7,17 @@ import type { ServerEvent } from '@shared/types.ts'
  * refresh mechanism, so a dropped or missed SSE message just means "wait for
  * the next poll" rather than stale-forever state. Torn down while the tab is
  * hidden to avoid burning one of the browser's 6 per-origin connections. */
-export function useLiveEvents(): void {
+export function useLiveEvents(enabled = true): void {
   const queryClient = useQueryClient()
   const sourceRef = useRef<EventSource | null>(null)
 
   useEffect(() => {
+    // A share visitor's /api/events request is always 403'd server-side
+    // (see server/share/middleware.ts's scopeGuard) — the 3s poll is their
+    // real refresh path regardless, so there's no reason to open a
+    // connection just to have the browser silently retry it forever.
+    if (!enabled) return
+
     function handle(event: ServerEvent) {
       switch (event.type) {
         case 'session:update':
@@ -64,5 +70,5 @@ export function useLiveEvents(): void {
       document.removeEventListener('visibilitychange', onVisibilityChange)
       disconnect()
     }
-  }, [queryClient])
+  }, [queryClient, enabled])
 }

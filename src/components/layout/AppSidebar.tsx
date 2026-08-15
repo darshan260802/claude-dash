@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router'
-import { SquaresFour, FolderOpen, ChatsCircle, Broadcast, MagnifyingGlass, Gear, Info } from '@phosphor-icons/react'
+import { SquaresFour, FolderOpen, ChatsCircle, Broadcast, MagnifyingGlass, Gear, Info, ShareNetwork } from '@phosphor-icons/react'
 import {
   Sidebar,
   SidebarContent,
@@ -12,6 +12,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { LiveIndicator } from './LiveIndicator'
+import { useShareContext } from '@/hooks/useShare'
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: SquaresFour, end: true },
@@ -19,11 +20,22 @@ const NAV = [
   { to: '/sessions', label: 'Sessions', icon: ChatsCircle },
   { to: '/live', label: 'Live', icon: Broadcast },
   { to: '/search', label: 'Search', icon: MagnifyingGlass },
-  { to: '/settings', label: 'Settings', icon: Gear },
+  // Both ownerOnly: reachable at all only because a global-mode share
+  // visitor gets the same route tree as the owner (see App.tsx) — these two
+  // are the owner's own control surface within it, and the server 403s them
+  // for a visitor independently of this filter (PATCH /api/settings and all
+  // of /api/share/* are owner-only regardless of mode).
+  { to: '/share', label: 'Share', icon: ShareNetwork, ownerOnly: true },
+  { to: '/settings', label: 'Settings', icon: Gear, ownerOnly: true },
 ]
 
 export function AppSidebar() {
   const location = useLocation()
+  const { data: shareCtx } = useShareContext()
+  // undefined (still loading) counts as owner — avoids a flash of these
+  // items appearing then disappearing for the overwhelmingly common local
+  // (non-shared) case.
+  const isOwner = shareCtx?.isOwner !== false
 
   return (
     <Sidebar collapsible="icon">
@@ -40,7 +52,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV.map((item) => {
+              {NAV.filter((item) => !item.ownerOnly || isOwner).map((item) => {
                 const isActive = item.end ? location.pathname === item.to : location.pathname.startsWith(item.to)
                 return (
                   <SidebarMenuItem key={item.to}>

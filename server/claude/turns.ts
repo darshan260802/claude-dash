@@ -72,7 +72,13 @@ function attachmentSummary(attachment: Record<string, unknown>): string {
   return JSON.stringify(safe)
 }
 
-function convertBlock(block: ContentBlock, session: string, byteOffset: number, byteLength: number): TurnBlockDTO | null {
+function convertBlock(
+  block: ContentBlock,
+  session: string,
+  byteOffset: number,
+  byteLength: number,
+  agentId: string | undefined,
+): TurnBlockDTO | null {
   switch (block.type) {
     case 'thinking': {
       const t = truncateText((block as { thinking: string }).thinking ?? '')
@@ -81,7 +87,7 @@ function convertBlock(block: ContentBlock, session: string, byteOffset: number, 
         text: t.text,
         truncated: t.truncated,
         fullBytes: t.truncated ? t.fullBytes : undefined,
-        ref: t.truncated ? { session, byteOffset, byteLength } : undefined,
+        ref: t.truncated ? { session, byteOffset, byteLength, agentId } : undefined,
       }
     }
     case 'text': {
@@ -91,12 +97,12 @@ function convertBlock(block: ContentBlock, session: string, byteOffset: number, 
         text: t.text,
         truncated: t.truncated,
         fullBytes: t.truncated ? t.fullBytes : undefined,
-        ref: t.truncated ? { session, byteOffset, byteLength } : undefined,
+        ref: t.truncated ? { session, byteOffset, byteLength, agentId } : undefined,
       }
     }
     case 'image': {
       const mediaType = 'source' in block ? String((block as { source: { media_type?: string } }).source?.media_type ?? '') : ''
-      return { type: 'image', ref: { session, byteOffset, byteLength }, mediaType }
+      return { type: 'image', ref: { session, byteOffset, byteLength, agentId }, mediaType }
     }
     case 'tool_use':
       // handled separately via convertToolUseBlock — needs session context
@@ -128,7 +134,7 @@ interface LocatedBlock {
   byteLength: number
 }
 
-export function groupIntoTurns(lines: OffsetRecord[], session: string): GroupIntoTurnsResult {
+export function groupIntoTurns(lines: OffsetRecord[], session: string, agentId?: string): GroupIntoTurnsResult {
   const turns: TurnDTO[] = []
   const pendingResults = new Map<string, PendingToolResult>()
   const unknownRecordTypes = new Set<string>()
@@ -209,7 +215,7 @@ export function groupIntoTurns(lines: OffsetRecord[], session: string): GroupInt
           dtoBlocks.push({ type: 'text', text: t.text, truncated: t.truncated })
         } else {
           for (const b of otherBlocks) {
-            const conv = convertBlock(b, session, byteOffset, byteLength)
+            const conv = convertBlock(b, session, byteOffset, byteLength, agentId)
             if (conv) dtoBlocks.push(conv)
           }
         }
@@ -284,11 +290,12 @@ export function groupIntoTurns(lines: OffsetRecord[], session: string): GroupInt
             session,
             byteOffset: pending?.byteOffset ?? turn.byteOffset,
             byteLength: pending?.byteLength ?? 0,
+            agentId,
           }),
         })
         continue
       }
-      const conv = convertBlock(b, session, lbOffset, lbLength)
+      const conv = convertBlock(b, session, lbOffset, lbLength, agentId)
       if (conv) dtoBlocks.push(conv)
     }
     turn.blocks = dtoBlocks
