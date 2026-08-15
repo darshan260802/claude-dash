@@ -11,8 +11,8 @@ import { ShareButton } from '@/components/share/ShareButton'
 
 export function SessionHeader({ session }: { session: SessionDetailDTO }) {
   return (
-    <div className="flex flex-col gap-2 border-b border-border pb-4">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2 border-b border-border pb-4 items-start">
+      <div className="flex items-center gap-2 w-full">
         <LivenessPill liveness={session.liveness} />
         {session.forkOf && (
           <Badge variant="outline" className="text-[10px]">

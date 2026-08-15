@@ -35,7 +35,7 @@ export function AboutPage() {
       </div>
 
       <Card>
-        <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center">
+        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center">
           <Avatar size="lg" className="size-16 sm:size-20">
             <AvatarImage src={DEV.avatar} alt={DEV.name} />
             <AvatarFallback className="bg-primary text-lg font-bold text-primary-foreground">CD</AvatarFallback>
