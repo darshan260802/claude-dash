@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "publish-skill",
+  "owner": "mahidalhan",
+  "repo": "claude-hacks",
+  "path": "skills/publish-skill/skills/publish-skill",
+  "branch": "master",
+  "sha": "f9dab293beef1405463c6ebead0d55060c8905a9",
+  "source": "manual"
+}
